@@ -1,4 +1,4 @@
 .env
 frontend/.env.loca
 frontend/node_modules
-backend/.venv
+backend/venv
