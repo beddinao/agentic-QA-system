@@ -32,7 +32,7 @@ class IngestionService:
             text = soup.get_text()
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = ' '.join(chunk for chunk in chunks in chunk)
+            text = ' '.join(chunk for chunk in chunks if chunk)
 
             return text
         except Exception as e:
@@ -79,4 +79,5 @@ class IngestionService:
                 "status": "failed",
                 "error_message": str(e)
             }).eq("id", job_id).execute()
+            print(f"got error: {str(e)}")
 

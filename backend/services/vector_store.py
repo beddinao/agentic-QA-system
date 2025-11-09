@@ -28,7 +28,7 @@ class VectorStore:
             print("--- [PINECONE]: creating new index")
             self.pinecone.create_index(
                 name=self.index_name,
-                dimension=1536,
+                dimension=384,
                 metric="cosine",
                 spec=ServerlessSpec(
                     cloud="aws",
