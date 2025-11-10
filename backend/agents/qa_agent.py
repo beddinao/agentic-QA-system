@@ -1,6 +1,7 @@
+from fastapi.responses import StreamingResponse
 from langchain.agents import create_agent
 from langchain_core.prompts import ChatPromptTemplate
-from services.openrouter_client import create_openrouter_llm, test_openrouter_configurations
+from services.openrouter_client import create_openrouter_llm
 from services.vector_store import vector_store
 from langchain.tools import tool
 from dotenv import load_dotenv
@@ -22,6 +23,26 @@ class QAAgent:
         except Exception:
             return ""
 
+    def _form_user_query(self, question: str, history: list = None):
+        try:
+            if history is None:
+                history = []
+            messages = []
+
+            for msg in history:
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            messages.append({
+                "role": "user",
+                "content": question
+            })
+            return messages
+        except Exception:
+            return []
+
+
     def _create_tools(self):
         @tool
         def document_search(query: str) -> str:
@@ -31,20 +52,17 @@ class QAAgent:
             vector_store_instance = vector_store.get_vector_store()
             docs = vector_store_instance.similarity_search(query, k=3)
 
-            citations = []
-            context = ""
-            for i, doc in enumerate(docs):
+            results = []
+            for doc in docs:
                 print(f"--- [BOT][{self._get_current_time()}]: found document from: {doc.metadata.get('source', 'unknown')}")
-                source = docs.metadata.get("source", "unknown")
-                content = docs.page_content
-                context += f"\n\nSource {i+1 ({source}):\n{content}}"
-                citations.append({
-                    "source": source,
-                    "content": content[:200] + "...",
-                    "confidence": 0.95
+                results.append({
+                    "content": doc.page_content,
+                    "source": doc.metadata.get("source", "unknown"),
+                    "chunk_index": doc.metadata.get("chunk_index", 0)
                 })
 
-            return context, citations 
+            return json.dumps(results) 
+        self._search_documents = document_search
         return [document_search]
 
     def _create_agent(self):
@@ -69,29 +87,12 @@ class QAAgent:
         return agent
 
     def generate_response(self, question: str, history: list = None):
-        if history is None:
-            history = []
-
-        messages = []
-        for msg in history:
-            messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-
-        messages.append({
-            "role": "user",
-            "content": question
-        })
+        messages = self._form_user_query(question, history)
 
         try:
-            
-            test_openrouter_configurations();
-
             result = self.agent.invoke({
                 "messages": messages
             })
-
             final_message = result["messages"][-1]
             answer = final_message.content if hasattr(final_message, 'content') else str(final_message)
 
@@ -119,4 +120,32 @@ class QAAgent:
                 "content": f"I encountered an error: {str(e)}",
                 "citations": []
             }
+
+    def generate_streamed_response(self, question:str, history: list = None):
+        messages = self._form_user_query(question, history)
+        citations_sent = False
+
+        for event in self.agent.stream(
+            {"messages": messages},
+            stream_mode="messages"
+        ):
+            token, metadata = event
+            print(f"token {token}")
+            if (hasattr(token, 'name') and token.name == 'document_search'
+                    and token.content and not citations_sent):
+                try:
+                    search_data = json.loads(token.content)
+                    citations = []
+                    for doc in search_data:
+                        citations.append({
+                            "source": doc.get("source", "unknown"),
+                            "content": doc.get("content", "")[:10] + "...",
+                            "confidence": 0.95
+                        })
+                    citations_sent = True
+                    yield {"type": "citation", "content": citations}
+                except:
+                    pass
+            elif token.content:
+                yield {"type": "response", "content": token.content}
 
