@@ -43,7 +43,7 @@ class IngestionService:
     
     def _get_current_time(self):
         try:
-            return datatime.now().strftime("%H:%M:%S")
+            return datetime.now().strftime("%H:%M:%S")
         except Exception:
             return ""
 
@@ -72,6 +72,9 @@ class IngestionService:
 
 
     def _get_pages_of_intrest(self, source_url: str, sitemap_url: str, max_pages):
+        print(f"--- [INJECTOR][{self._get_current_time()}]: detected special docs page {source_url}")
+        print(f"--- [INJECTOR][{self._get_current_time()}]: attempting {max_pages} other doc pages")
+        print(f"--- [INJECTOR][{self._get_current_time()}]: scraping sitemap: {sitemap_url}...")
         response = requests.get(sitemap_url)
         soup = BeautifulSoup(response.content, 'xml')
         
@@ -79,8 +82,9 @@ class IngestionService:
         items = soup.find_all('loc')
         for item in items:
             url = item.get_text()
-            if self._is_a_doc_page(source_url, url)
-                pages_of_intrest.append(item.get_text())
+            if self._is_a_doc_page(source_url, url):
+                pages_of_intrest.append(url)
+                print(f"--- [INJECTOR][{self._get_current_time()}]: found relevant docs page: {url}")
                 if len(pages_of_intrest) >= max_pages:
                     break
 
@@ -100,7 +104,7 @@ class IngestionService:
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             text = ' '.join(chunk for chunk in chunks if chunk)
 
-            print(f"--- [INJECTOR][{self._get_current_time}]: done scraping url: {url}")
+            print(f"--- [INJECTOR][{self._get_current_time()}]: done scraping url: {url}")
             return text
         except Exception as e:
             raise Exception(f"failed to scrape {url}: {str(e)}")
@@ -144,8 +148,8 @@ class IngestionService:
 
                 vector_store.add_documents(chunks)
 
+                print(f"--- [INJECTOR][{self._get_current_time()}]: storing chunks: {len(chunks)}")
                 for i, chunk in enumerate(chunks):
-                    print(f"--- [INJECTOR][{self._get_current_time()}]: storing chunk: {i}")
                     self.supabase.table("document_chunks").insert({
                         "ingestion_job_id": job_id,
                         "content": chunk.page_content,

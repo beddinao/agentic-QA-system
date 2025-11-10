@@ -4,6 +4,7 @@ from services.openrouter_client import create_openrouter_llm
 from services.vector_store import vector_store
 from langchain.tools import tool
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 import json
 
@@ -14,19 +15,25 @@ class QAAgent:
         self.llm = create_openrouter_llm()
         self.tools = self._create_tools()
         self.agent = self._create_agent()
+    
+    def _get_current_time(self):
+        try:
+            return datetime.now().strftime("%H:%M:%S")
+        except Exception:
+            return ""
 
     def _create_tools(self):
         @tool
         def document_search(query: str) -> str:
             """Search documentation for relevant and useful informations"""
-            print(f"--- [BOT]: document_search tool is being used, query: {query}")
+            print(f"--- [BOT][{self._get_current_time()}]: tool document_search() is being used")
 
             vector_store_instance = vector_store.get_vector_store()
             docs = vector_store_instance.similarity_search(query, k=3)
 
             results = []
             for doc in docs:
-                print(f"--- [BOT]: found document from: {doc.metadata.get('source', 'unknown')}")
+                print(f"--- [BOT][{self._get_current_time()}]: found document from: {doc.metadata.get('source', 'unknown')}")
                 results.append({
                     "content": doc.page_content,
                     "source": doc.metadata.get("source", "unknown"),
@@ -38,7 +45,7 @@ class QAAgent:
 
     def _create_agent(self):
         system_prompt = """
-            You are a very wholesome and helpful documentation assistant for technical documentations. 
+            You are a very helpful documentation assistant for technical documentations. 
 
             ** IMPORTANT RULES: **
             1. Always use the document_search tool to find information from our database

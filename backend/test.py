@@ -57,4 +57,14 @@ def is_urls_in_same_domain(url1: str, url2: str) -> bool:
     except Exception:
         return False
 
-print(is_urls_in_same_domain("https://docs.langchain.com/sitemap.xml", "https://langchain.com/"))
+#print(is_urls_in_same_domain("https://docs.langchain.com/sitemap.xml", "https://langchain.com/"))
+
+from datetime import datetime
+
+def _get_current_time():
+    try:
+        return datetime.now().strftime("%H:%M:%S")
+    except Exception:
+        return ""
+
+print(_get_current_time())
