@@ -1,21 +1,21 @@
-networks:
-  agent:
-    name: agent
+#networks:
+  #  agent:
+    #    name: agent
 
 services:
-  frontend:
-    container_name: frontend
-    build: ./frontend
-    ports:
-      - '8022:8022'
-      - '3000:3000'
-    restart: on-failure
-    depends_on:
-      - backend
-    networks:
-      - agent
-    env_file:
-      - .env
+  #  frontend:
+  #    container_name: frontend
+  #    build: ./frontend
+  #    ports:
+  #      - '8022:8022'
+  #      - '3000:3000'
+  #    restart: on-failure
+  #    depends_on:
+  #      - backend
+  #    networks:
+  #      - agent
+  #    env_file:
+  #      - .env
   backend:
     container_name: backend
     build: ./backend
@@ -25,5 +25,5 @@ services:
     restart: on-failure
     env_file:
       - .env
-    networks:
-      - agent
+        #    networks:
+        #      - agent
