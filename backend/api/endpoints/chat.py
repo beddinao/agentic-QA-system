@@ -121,4 +121,23 @@ async def chat_stream(request: ChatRequest):
             }
             yield f"data: {json.dumps(error_data)}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/plain")
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@router.get("/history/{conversation_id}")
+def get_conversation_history(conversation_id: str):
+    """Return the list of messages for a given conversation id.
+
+    This returns the raw message rows with fields: role, content, citations (if any).
+    The frontend will map these into the message structure it expects.
+    """
+    try:
+        resp = supabase.table("message").select("*").eq("conversation_id", conversation_id).order("id", asc=True).execute()
+        data = resp.data or []
+        # normalize citations field to a list if needed
+        for row in data:
+            if "citations" in row and row["citations"] is None:
+                row["citations"] = []
+        return {"messages": data}
+    except Exception as e:
+        return {"messages": [], "error": str(e)}
